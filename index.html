@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ECHOES Bingo 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Helvetica Neue', 'Hiragino Sans', 'Meiryo', sans-serif;
+    background: #f0f4f8; color: #1a2a3a;
+    min-height: 100vh; padding: 12px; overflow-x: hidden;
+  }
+  .header { text-align: center; padding: 16px 8px 8px; }
+  .header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: 0.04em; color: #1a5276; }
+  .header p { font-size: 0.8rem; color: #5a7a9a; margin-top: 4px; }
+  .landing { max-width: 400px; margin: 40px auto; text-align: center; }
+  .landing input {
+    width: 100%; padding: 14px; font-size: 1rem; border: 2px solid #bcd;
+    border-radius: 10px; text-align: center; margin: 16px 0;
+    outline: none; transition: border-color 0.2s;
+  }
+  .landing input:focus { border-color: #1a5276; }
+  .landing button {
+    width: 100%; padding: 14px; font-size: 1rem; font-weight: 600;
+    background: #1a5276; color: #fff; border: none; border-radius: 10px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .landing button:hover { background: #1e6a96; }
+  .landing .sub { font-size: 0.8rem; color: #888; margin-top: 12px; }
+  .bingo-wrap { max-width: 420px; margin: 12px auto; }
+  .bingo-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 4px; aspect-ratio: 1;
+  }
+  .cell {
+    background: #fff; border: 2px solid #d0dae4; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 0.65rem; line-height: 1.3;
+    padding: 4px; cursor: pointer; transition: all 0.3s;
+    font-weight: 500; color: #2c3e50; position: relative;
+    word-break: keep-all; overflow-wrap: break-word;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .cell:active:not(.open):not(.free) { transform: scale(0.95); background: #eef3f8; }
+  .cell.open { background: #d4efdf; border-color: #27ae60; color: #1a6b3a; }
+  .cell.open::after {
+    content: '\2713'; position: absolute; top: 2px; right: 4px;
+    font-size: 0.6rem; color: #27ae60; font-weight: 700;
+  }
+  .cell.free {
+    background: #ebf5fb; border-color: #1a5276; color: #1a5276;
+    font-weight: 700; font-size: 0.7rem; cursor: default;
+  }
+  .scan-btn {
+    display: block; max-width: 420px; margin: 8px auto;
+    width: 100%; padding: 14px; font-size: 1rem; font-weight: 600;
+    background: #2980b9; color: #fff; border: none; border-radius: 10px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .scan-btn:hover { background: #3498db; }
+  .manual-note {
+    max-width: 420px; margin: 4px auto; text-align: center;
+    font-size: 0.75rem; color: #999;
+  }
+  .scanner-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 100; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+  }
+  .scanner-overlay.active { display: flex; }
+  .scanner-box { width: 300px; height: 300px; border-radius: 12px; overflow: hidden; }
+  .scanner-close {
+    margin-top: 20px; padding: 12px 32px; font-size: 1rem;
+    background: #e74c3c; color: #fff; border: none; border-radius: 10px; cursor: pointer;
+  }
+  .scanner-msg { color: #fff; font-size: 0.9rem; margin-top: 12px; text-align: center; min-height: 1.5em; }
+  .qr-page {
+    max-width: 400px; margin: 40px auto; text-align: center;
+    background: #fff; padding: 32px; border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .qr-page h2 { font-size: 1.2rem; color: #1a5276; margin-bottom: 4px; }
+  .qr-page .affil { font-size: 0.85rem; color: #888; margin-bottom: 20px; }
+  .qr-page .note { font-size: 0.75rem; color: #aaa; margin-top: 16px; }
+  #qr-canvas { display: inline-block; }
+  .progress { max-width: 420px; margin: 8px auto; font-size: 0.8rem; color: #5a7a9a; text-align: center; }
+  .tabs { max-width: 420px; margin: 8px auto; display: flex; gap: 8px; }
+  .tab {
+    flex: 1; padding: 10px; text-align: center; font-size: 0.85rem;
+    font-weight: 600; border: 2px solid #d0dae4; border-radius: 10px;
+    background: #fff; cursor: pointer; color: #5a7a9a; transition: all 0.2s;
+  }
+  .tab.active { background: #1a5276; color: #fff; border-color: #1a5276; }
+  .hidden { display: none !important; }
+  /* Confirm Dialog */
+  .confirm-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 90; display: none;
+    align-items: center; justify-content: center;
+  }
+  .confirm-overlay.active { display: flex; }
+  .confirm-box {
+    background: #fff; border-radius: 16px; padding: 24px;
+    max-width: 300px; width: 90%; text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .confirm-box p { font-size: 0.95rem; font-weight: 600; color: #2c3e50; margin-bottom: 6px; }
+  .confirm-box .sub { font-size: 0.8rem; color: #888; margin-bottom: 16px; }
+  .confirm-btns { display: flex; gap: 8px; }
+  .confirm-btns button {
+    flex: 1; padding: 12px; font-size: 0.9rem; font-weight: 600;
+    border: none; border-radius: 10px; cursor: pointer;
+  }
+  .btn-yes { background: #27ae60; color: #fff; }
+  .btn-no { background: #eee; color: #666; }
+  /* Celebration */
+  .celebrate-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 200; display: none; align-items: center; justify-content: center;
+  }
+  .celebrate-overlay.active { display: flex; }
+  .celebrate-bubble {
+    background: #fff; border-radius: 20px; padding: 32px 28px;
+    text-align: center; box-shadow: 0 12px 48px rgba(0,0,0,0.25);
+    animation: bubblePop 0.6s cubic-bezier(0.17, 0.67, 0.29, 1.2);
+    position: relative; z-index: 201;
+  }
+  .celebrate-bubble .emoji { font-size: 3rem; margin-bottom: 8px; }
+  .celebrate-bubble .msg { font-size: 1.3rem; font-weight: 800; color: #b7950b; margin-bottom: 4px; }
+  .celebrate-bubble .sub { font-size: 0.85rem; color: #888; }
+  .celebrate-bubble button {
+    margin-top: 16px; padding: 10px 28px; font-size: 0.9rem;
+    font-weight: 600; background: #f39c12; color: #fff;
+    border: none; border-radius: 10px; cursor: pointer;
+  }
+  @keyframes bubblePop {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .confetti {
+    position: fixed; top: -10px; z-index: 200;
+    width: 10px; height: 10px; border-radius: 2px;
+    animation: fall linear forwards;
+  }
+  @keyframes fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Landing Page -->
+<div id="page-landing" class="landing">
+  <div class="header">
+    <h1>🎯 ECHOES Bingo 2026</h1>
+    <p>サマースクール参加者交流ビンゴ</p>
+  </div>
+  <div style="margin-top: 32px;">
+    <p style="font-size:0.9rem; color:#555; margin-bottom: 8px;">参加者番号を入力してください</p>
+    <input type="number" id="input-id" placeholder="例: 1" min="1" max="49">
+    <button onclick="startBingo()">ビンゴカードを表示</button>
+    <p class="sub">番号はアジェンダの名簿をご確認ください</p>
+  </div>
+</div>
+
+<!-- Main Page -->
+<div id="page-main" class="hidden">
+  <div class="header">
+    <h1>🎯 ECHOES Bingo 2026</h1>
+    <p id="user-label"></p>
+  </div>
+  <div class="tabs" id="tabs">
+    <div class="tab active" onclick="showTab('bingo')">ビンゴカード</div>
+    <div class="tab" onclick="showTab('qr')" id="tab-qr">自分のQR</div>
+  </div>
+  <div id="tab-bingo">
+    <div class="bingo-wrap">
+      <div class="bingo-grid" id="bingo-grid"></div>
+    </div>
+    <div class="progress" id="progress"></div>
+    <div id="bingo-msg"></div>
+    <button class="scan-btn" onclick="openScanner()">📷 QRをスキャン</button>
+    <p class="manual-note">マスをタップしても手動で開けられます</p>
+  </div>
+  <div id="tab-myqr" class="hidden">
+    <div class="qr-page">
+      <h2 id="qr-name"></h2>
+      <p class="affil" id="qr-affil"></p>
+      <div id="qr-canvas"></div>
+      <p class="note">このQRを他の参加者に見せてください</p>
+    </div>
+  </div>
+</div>
+
+<!-- Scanner Overlay -->
+<div class="scanner-overlay" id="scanner-overlay">
+  <div class="scanner-box" id="scanner-box"></div>
+  <p class="scanner-msg" id="scanner-msg">QRコードをカメラに映してください</p>
+  <button class="scanner-close" onclick="closeScanner()">閉じる</button>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <p id="confirm-label"></p>
+    <p class="sub">このマスを開けますか？</p>
+    <div class="confirm-btns">
+      <button class="btn-no" onclick="confirmCell(false)">やめる</button>
+      <button class="btn-yes" onclick="confirmCell(true)">開ける</button>
+    </div>
+  </div>
+</div>
+
+<!-- Celebration -->
+<div class="celebrate-overlay" id="celebrate-overlay">
+  <div class="celebrate-bubble">
+    <div class="emoji">🎉🎊🎉</div>
+    <div class="msg">BINGO!</div>
+    <div class="sub">おめでとうございます！！</div>
+    <button onclick="closeCelebration()">ありがとう！</button>
+  </div>
+</div>
+
+<script>
+// ============ PARTICIPANTS ============
+const participants = [
+  {id:1,name:"李 金澤",aff:"北海道大学",grade:"M1",senior:false,
+   tags:["北大","メソ気象","極端気象"]},
+  {id:2,name:"福島 広人",aff:"北海道大学",grade:"M2",senior:false,
+   tags:["北大","イベントアトリビューション","降水"]},
+  {id:3,name:"京野 祐大",aff:"北海道大学",grade:"D1",senior:true,
+   tags:["北大","衛星","雲"]},
+  {id:4,name:"菊池 和詩",aff:"北海道大学",grade:"D1",senior:true,
+   tags:["北大","メソ気象","降水","大雨"]},
+  {id:5,name:"吉田 槙之助",aff:"北海道大学",grade:"D1",senior:true,
+   tags:["北大","海洋物理","海洋モデリング"]},
+  {id:6,name:"中田 英太朗",aff:"北海道大学",grade:"D3",senior:true,
+   tags:["北大","海洋物理","台風"]},
+  {id:7,name:"若尾 和哉",aff:"北海道大学",grade:"D3",senior:true,
+   tags:["北大","メソ気象","降水"]},
+  {id:8,name:"周 習霊",aff:"北海道大学",grade:"博士研究員",senior:true,
+   tags:["北大","極端気象","研究員"]},
+  {id:9,name:"西川 はつみ",aff:"北海道大学",grade:"准教授",senior:true,
+   tags:["北大","大気海洋相互作用","観測","先生"]},
+  {id:10,name:"佐藤 友徳",aff:"北海道大学",grade:"教授",senior:true,
+   tags:["北大","降水","佐藤先生"]},
+  {id:11,name:"谷本 陽一",aff:"北海道大学",grade:"教授",senior:true,
+   tags:["北大","大気海洋相互作用","谷本先生"]},
+  {id:12,name:"篠原 立",aff:"富山大学",grade:"B4",senior:false,
+   tags:["富山大","海洋物理","海洋熱波"]},
+  {id:13,name:"安藤 大智",aff:"富山大学",grade:"M1",senior:false,
+   tags:["富山大","PMC"]},
+  {id:14,name:"野原 奏",aff:"富山大学",grade:"M1",senior:false,
+   tags:["富山大","大気放射"]},
+  {id:15,name:"宮村 拓侑",aff:"富山大学",grade:"M1",senior:false,
+   tags:["富山大","メソ気象","レーダー"]},
+  {id:16,name:"長谷川 和哉",aff:"富山大学",grade:"M2",senior:false,
+   tags:["富山大","線状降水帯"]},
+  {id:17,name:"天谷 友亮",aff:"富山大学",grade:"D1",senior:true,
+   tags:["富山大","海洋物理","海洋モデリング"]},
+  {id:18,name:"栗田 歩季",aff:"筑波大学",grade:"B4",senior:false,
+   tags:["筑波大","前線"]},
+  {id:19,name:"関根 梨恵",aff:"筑波大学",grade:"B4",senior:false,
+   tags:["筑波大","前線"]},
+  {id:20,name:"中山 陽貴",aff:"筑波大学",grade:"B4",senior:false,
+   tags:["筑波大","温帯低気圧","テレコネクション"]},
+  {id:21,name:"番場 凜",aff:"筑波大学",grade:"B4",senior:false,
+   tags:["筑波大","古気候"]},
+  {id:22,name:"川村 和敬",aff:"筑波大学",grade:"M2",senior:false,
+   tags:["筑波大","大気の川"]},
+  {id:23,name:"品川 優喜",aff:"筑波大学",grade:"M2",senior:false,
+   tags:["筑波大","ロスビー波","大気海洋相互作用"]},
+  {id:24,name:"岡島 悟",aff:"筑波大学",grade:"准教授",senior:true,
+   tags:["筑波大","大気海洋相互作用","先生"]},
+  {id:25,name:"大久保 柊",aff:"三重大学",grade:"B4",senior:false,
+   tags:["三重大","観測"]},
+  {id:26,name:"河合 菜々美",aff:"三重大学",grade:"B4",senior:false,
+   tags:["三重大","台風","ラジオゾンデ"]},
+  {id:27,name:"岸 琴心",aff:"三重大学",grade:"B4",senior:false,
+   tags:["三重大","海洋物理","ラジオゾンデ"]},
+  {id:28,name:"横堀 陸",aff:"三重大学",grade:"M1",senior:false,
+   tags:["三重大","大気海洋相互作用"]},
+  {id:29,name:"伊藤 凪咲",aff:"三重大学",grade:"M1",senior:false,
+   tags:["三重大","線状降水帯","ロスビー波"]},
+  {id:30,name:"大前 友",aff:"三重大学",grade:"M1",senior:false,
+   tags:["三重大","線状降水帯","降水"]},
+  {id:31,name:"服部 貴之",aff:"三重大学",grade:"M2",senior:false,
+   tags:["三重大","ブロッキング"]},
+  {id:32,name:"吉田 伊吹",aff:"三重大学",grade:"M2",senior:false,
+   tags:["三重大"]},
+  {id:33,name:"福田 紫都",aff:"三重大学",grade:"D1",senior:true,
+   tags:["三重大","海洋熱波","大気海洋相互作用"]},
+  {id:34,name:"天野 未空",aff:"三重大学",grade:"D3",senior:true,
+   tags:["三重大","やませ","大気海洋相互作用","観測"]},
+  {id:35,name:"青﨑 真優",aff:"新潟大学",grade:"M1",senior:false,
+   tags:["新潟大","温帯低気圧","雲"]},
+  {id:36,name:"高橋 直也",aff:"新潟大学",grade:"助教",senior:true,
+   tags:["新潟大","衛星","雲","先生"]},
+  {id:37,name:"浦 勇隼",aff:"東京大学",grade:"M1",senior:false,
+   tags:["東大","海洋物理"]},
+  {id:38,name:"岡本 侑也",aff:"東京大学",grade:"M1",senior:false,
+   tags:["東大","海洋物理"]},
+  {id:39,name:"田口 耕",aff:"東京大学",grade:"M1",senior:false,
+   tags:["東大","極端気象","テレコネクション"]},
+  {id:40,name:"東原 滉",aff:"東京大学",grade:"M1",senior:false,
+   tags:["東大","イベントアトリビューション"]},
+  {id:41,name:"猪狩 和樹",aff:"東京大学",grade:"M2",senior:false,
+   tags:["東大","大気海洋相互作用","ロスビー波"]},
+  {id:42,name:"町 勇汰",aff:"東京海洋大学",grade:"M1",senior:false,
+   tags:["海洋大","大気海洋相互作用"]},
+  {id:43,name:"山内 来夢",aff:"東京海洋大学",grade:"M2",senior:false,
+   tags:["海洋大","テレコネクション","海洋物理"]},
+  {id:44,name:"牧野 希良理",aff:"お茶の水女子大学",grade:"M2",senior:false,
+   tags:["お茶大","線状降水帯"]},
+  {id:45,name:"三田 優里",aff:"お茶の水女子大学",grade:"D2",senior:true,
+   tags:["お茶大","メソ気象","竜巻"]},
+  {id:46,name:"木戸 晶一郎",aff:"JAMSTEC",grade:"研究員",senior:true,
+   tags:["JAMSTEC","海洋熱波","海流予測","研究員"]},
+  {id:47,name:"林田 博士",aff:"JAMSTEC",grade:"研究員",senior:true,
+   tags:["JAMSTEC","海洋生物地球化学","データ同化","研究員"]},
+  {id:48,name:"道川 瑳那子",aff:"鹿児島大学",grade:"B4",senior:false,
+   tags:["鹿児島大","大気海洋相互作用","黒潮"]},
+  {id:49,name:"久住 空広",aff:"気象研究所",grade:"研究員",senior:true,
+   tags:["気象研","黒潮","海洋物理","海流予測","研究員"]}
+];
+
+// ============ BINGO SQUARES ============
+// match:[] = manual only, match:["tag"] = QR auto + manual
+const allSquares = [
+  // --- 交流・体験系（手動のみ）---
+  {id:"hometown",  label:"出身地が同じ人を見つける",   match:[]},
+  {id:"gohan",  label:"朝ごはんを食べる",   match:[]},
+  {id:"poster",    label:"ポスターで質問する",         match:[]},
+  {id:"intro3",    label:"3人以上で自己紹介する",       match:[]},
+  {id:"photo4",    label:"4人以上で写真を撮る",         match:[]},
+  {id:"names10",   label:"名前を覚えた人が10人超え",    match:[]},
+  {id:"explain",   label:"自分の研究を誰かに説明する",  match:[]},
+  {id:"dmsp",      label:"dimethylsulfoniopropionateを噛まずに言える人に会う", match:[]},
+  {id:"cloudtalk", label:"好きな雲について喋る",          match:[]},
+  {id:"recommend", label:"おすすめの論文を聞く",    match:[]},
+  {id:"gwspeak",   label:"グループワークで発言する",       match:[]},
+  {id:"diffyear",  label:"違う学年の人と話す",             match:[]},
+  // --- 所属系（QR対応）---
+  {id:"hokudai",   label:"北大の人に会う",       match:["北大"]},
+  {id:"toyama",    label:"富山大の人に会う",     match:["富山大"]},
+  {id:"tsukuba",   label:"筑波大の人に会う",     match:["筑波大"]},
+  {id:"mie",       label:"三重大の人に会う",     match:["三重大"]},
+  {id:"ocha",      label:"お茶大の人に会う",     match:["お茶大"]},
+  {id:"niigata",   label:"新潟大の人に会う",     match:["新潟大"]},
+  {id:"todai",     label:"東大の人に会う",       match:["東大"]},
+  {id:"kaiyodai",  label:"海洋大の人に会う",     match:["海洋大"]},
+  {id:"kagoshima", label:"鹿児島大の人に会う",   match:["鹿児島大"]},
+  {id:"jamstec",   label:"JAMSTECの人に会う",    match:["JAMSTEC"]},
+  {id:"mri",       label:"気象研の人に会う",     match:["気象研"]},
+  // --- 招待講演者（QR対応）---
+  {id:"satosensei",  label:"佐藤先生と話す",     match:["佐藤先生"]},
+  {id:"tanisensei",  label:"谷本先生と話す",     match:["谷本先生"]},
+  // --- 分野・キーワード系（QR対応）---
+  {id:"ocean",     label:"海洋物理の人に会う",          match:["海洋物理"]},
+  {id:"airsea",    label:"大気海洋相互作用の人に会う",  match:["大気海洋相互作用"]},
+  {id:"meso",      label:"メソ気象の人に会う",          match:["メソ気象"]},
+  {id:"kansoku",   label:"観測の人に会う",              match:["観測"]},
+  {id:"kuroshio",  label:"黒潮の人に会う",              match:["黒潮"]},
+  {id:"typhoon",   label:"台風の人に会う",              match:["台風"]},
+  {id:"precip",    label:"降水の人に会う",              match:["降水"]},
+  {id:"yamase",    label:"やませの話を聞く",            match:["やませ"]},
+];
+
+// ============ STATE ============
+let currentUser = null;
+let cardSquares = [];
+let openCells = new Set();
+let scanner = null;
+let pendingCellIndex = null;
+let bingoAlreadyCelebrated = false;
+
+// ============ SEEDED RANDOM ============
+function seededRandom(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
+function shuffleArray(arr, rng) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateCard(userId) {
+  var rng = seededRandom(userId * 7919 + 42);
+  // Filter out squares where the current user is the ONLY matching person
+  var eligible = allSquares.filter(function(sq) {
+    if (sq.match.length === 0) return true; // manual-only: always OK
+    // Find all participants who have any of the square's match tags
+    var others = participants.filter(function(p) {
+      if (p.id === userId) return false; // exclude self
+      return sq.match.some(function(m) { return p.tags.indexOf(m) >= 0; });
+    });
+    return others.length > 0; // keep only if someone ELSE matches
+  });
+  var shuffled = shuffleArray(eligible, rng);
+  var selected = shuffled.slice(0, 24);
+  var card = [];
+  for (var i = 0; i < 25; i++) {
+    if (i === 12) {
+      card.push({ id: "free", label: "FREE", match: [] });
+    } else {
+      card.push(selected[i < 12 ? i : i - 1]);
+    }
+  }
+  return card;
+}
+
+function checkBingo() {
+  const lines = [];
+  for (let r = 0; r < 5; r++) lines.push([0,1,2,3,4].map(c => r*5+c));
+  for (let c = 0; c < 5; c++) lines.push([0,1,2,3,4].map(r => r*5+c));
+  lines.push([0,6,12,18,24]);
+  lines.push([4,8,12,16,20]);
+  for (const line of lines) {
+    if (line.every(i => openCells.has(i) || i === 12)) return true;
+  }
+  return false;
+}
+
+// ============ CONFETTI ============
+function launchConfetti() {
+  const colors = ['#f39c12','#e74c3c','#2ecc71','#3498db','#9b59b6','#1abc9c','#e67e22','#e91e63'];
+  for (let i = 0; i < 80; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.width = (Math.random() * 8 + 6) + 'px';
+    el.style.height = (Math.random() * 8 + 6) + 'px';
+    el.style.animationDuration = (Math.random() * 2 + 2) + 's';
+    el.style.animationDelay = (Math.random() * 1.5) + 's';
+    el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 5000);
+  }
+}
+function showCelebration() {
+  if (bingoAlreadyCelebrated) return;
+  bingoAlreadyCelebrated = true;
+  launchConfetti();
+  document.getElementById('celebrate-overlay').classList.add('active');
+}
+function closeCelebration() {
+  document.getElementById('celebrate-overlay').classList.remove('active');
+}
+
+// ============ UI ============
+function startBingo() {
+  var id = parseInt(document.getElementById('input-id').value);
+  if (!id || id < 1 || id > 49) { alert('1〜49の番号を入力してください'); return; }
+  currentUser = participants.find(function(p){ return p.id === id; });
+  if (!currentUser) { alert('番号が見つかりません'); return; }
+
+  var saved = localStorage.getItem('echoes_bingo_' + id);
+  if (saved) { openCells = new Set(JSON.parse(saved)); }
+  var celebSaved = localStorage.getItem('echoes_bingo_celeb_' + id);
+  if (celebSaved) { bingoAlreadyCelebrated = true; }
+
+  cardSquares = generateCard(id);
+
+  document.getElementById('page-landing').classList.add('hidden');
+  document.getElementById('page-main').classList.remove('hidden');
+  document.getElementById('user-label').textContent =
+    currentUser.name + '\uFF08' + currentUser.aff + '\uFF09';
+
+  if (!currentUser.senior) {
+    document.getElementById('tab-qr').classList.add('hidden');
+  }
+  renderGrid();
+  showTab('bingo');
+}
+
+function renderGrid() {
+  var grid = document.getElementById('bingo-grid');
+  grid.innerHTML = '';
+  cardSquares.forEach(function(sq, i) {
+    var cell = document.createElement('div');
+    cell.className = 'cell';
+    if (sq.id === 'free') {
+      cell.classList.add('free', 'open');
+      cell.textContent = '\u2605 FREE';
+    } else {
+      cell.textContent = sq.label;
+      if (openCells.has(i)) {
+        cell.classList.add('open');
+      } else {
+        cell.addEventListener('click', function(){ onCellTap(i); });
+      }
+    }
+    grid.appendChild(cell);
+  });
+  var opened = openCells.size;
+  document.getElementById('progress').textContent = opened + ' / 24 マス';
+
+  if (checkBingo()) {
+    showCelebration();
+    localStorage.setItem('echoes_bingo_celeb_' + currentUser.id, '1');
+  }
+}
+
+// Manual tap
+function onCellTap(index) {
+  pendingCellIndex = index;
+  document.getElementById('confirm-label').textContent =
+    '\u300C' + cardSquares[index].label + '\u300D';
+  document.getElementById('confirm-overlay').classList.add('active');
+}
+function confirmCell(yes) {
+  document.getElementById('confirm-overlay').classList.remove('active');
+  if (yes && pendingCellIndex !== null) {
+    openCells.add(pendingCellIndex);
+    saveState();
+    renderGrid();
+  }
+  pendingCellIndex = null;
+}
+
+function saveState() {
+  localStorage.setItem('echoes_bingo_' + currentUser.id,
+    JSON.stringify(Array.from(openCells)));
+}
+
+function showTab(tab) {
+  var tabs = document.querySelectorAll('.tab');
+  tabs.forEach(function(t){ t.classList.remove('active'); });
+  if (tab === 'bingo') {
+    document.getElementById('tab-bingo').classList.remove('hidden');
+    document.getElementById('tab-myqr').classList.add('hidden');
+    tabs[0].classList.add('active');
+  } else {
+    document.getElementById('tab-bingo').classList.add('hidden');
+    document.getElementById('tab-myqr').classList.remove('hidden');
+    tabs[1].classList.add('active');
+    renderQR();
+  }
+}
+
+function renderQR() {
+  if (!currentUser || !currentUser.senior) return;
+  document.getElementById('qr-name').textContent = currentUser.name;
+  document.getElementById('qr-affil').textContent =
+    currentUser.aff + '\u30FB' + currentUser.grade;
+  var canvas = document.getElementById('qr-canvas');
+  if (canvas.children.length === 0) {
+    new QRCode(canvas, {
+      text: 'ECHOES2026:' + currentUser.id,
+      width: 200, height: 200,
+      colorDark: '#1a5276', colorLight: '#ffffff'
+    });
+  }
+}
+
+// ============ SCANNER ============
+function openScanner() {
+  var overlay = document.getElementById('scanner-overlay');
+  overlay.classList.add('active');
+  document.getElementById('scanner-msg').textContent =
+    'QRコードをカメラに映してください';
+  scanner = new Html5Qrcode('scanner-box');
+  scanner.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    onScanSuccess, function(){}
+  ).catch(function(err) {
+    document.getElementById('scanner-msg').textContent =
+      'カメラを起動できませんでした';
+  });
+}
+
+function onScanSuccess(decoded) {
+  if (!decoded.startsWith('ECHOES2026:')) {
+    document.getElementById('scanner-msg').textContent = '無効なQRコードです';
+    return;
+  }
+  var scannedId = parseInt(decoded.split(':')[1]);
+  var scanned = participants.find(function(p){ return p.id === scannedId; });
+  if (!scanned) {
+    document.getElementById('scanner-msg').textContent = '不明な参加者です';
+    return;
+  }
+  var matched = false;
+  var matchedLabels = [];
+  cardSquares.forEach(function(sq, i) {
+    if (sq.id === 'free' || openCells.has(i)) return;
+    var hasMatch = sq.match.some(function(m){ return scanned.tags.indexOf(m) >= 0; });
+    if (hasMatch) {
+      openCells.add(i);
+      matched = true;
+      matchedLabels.push(sq.label);
+    }
+  });
+  saveState();
+  if (matched) {
+    document.getElementById('scanner-msg').textContent =
+      '\u2705 ' + scanned.name + 'さん！ → ' + matchedLabels.join('、');
+  } else {
+    document.getElementById('scanner-msg').textContent =
+      scanned.name + 'さん（新しく開くマスはありませんでした）';
+  }
+  setTimeout(function(){ closeScanner(); renderGrid(); }, 2000);
+}
+
+function closeScanner() {
+  var overlay = document.getElementById('scanner-overlay');
+  overlay.classList.remove('active');
+  if (scanner) { scanner.stop().catch(function(){}); scanner = null; }
+}
+
+// URL param
+var urlParams = new URLSearchParams(window.location.search);
+var paramId = urlParams.get('id');
+if (paramId) {
+  document.getElementById('input-id').value = paramId;
+  window.addEventListener('DOMContentLoaded', function(){ startBingo(); });
+  startBingo();
+}
+</script>
+</body>
+</html>
