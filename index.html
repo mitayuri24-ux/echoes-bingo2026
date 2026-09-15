@@ -118,6 +118,23 @@
   }
   .tab.active { background: #1a5276; color: #fff; border-color: #1a5276; }
   .hidden { display: none !important; }
+  .name-list {
+    max-width: 400px; margin: 12px auto; text-align: left;
+  }
+  .name-group-label {
+    font-size: 0.75rem; font-weight: 700; color: #1a5276;
+    padding: 8px 4px 4px; border-bottom: 1px solid #d0dae4;
+    margin-top: 8px;
+  }
+  .name-btn {
+    display: block; width: 100%; padding: 10px 12px;
+    font-size: 0.9rem; text-align: left; background: #fff;
+    border: none; border-bottom: 1px solid #eef2f6;
+    cursor: pointer; color: #2c3e50; transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .name-btn:active { background: #ebf5fb; }
+  .name-btn .num { color: #aab; font-size: 0.8rem; margin-right: 6px; }
   /* Confirm Dialog */
   .confirm-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -183,12 +200,9 @@
     <h1>🎯 ECHOES Bingo 2026</h1>
     <p>サマースクール参加者交流ビンゴ</p>
   </div>
-  <div style="margin-top: 32px;">
-    <p style="font-size:0.9rem; color:#555; margin-bottom: 8px;">参加者番号を入力してください</p>
-    <input type="number" id="input-id" placeholder="例: 1" min="1" max="49">
-    <button onclick="startBingo()">ビンゴカードを表示</button>
-    <p class="sub">番号はアジェンダの名簿をご確認ください</p>
-  </div>
+  <p style="font-size:0.85rem; color:#555; margin-top:16px;">自分の名前をタップしてください</p>
+  <div id="name-list" class="name-list"></div>
+  <input type="hidden" id="input-id" value="">
 </div>
 
 <!-- Main Page -->
@@ -644,7 +658,37 @@ function closeScanner() {
   overlay.classList.remove('active');
   if (scanner) { scanner.stop().catch(function(){}); scanner = null; }
 }
-
+// ============ NAME LIST ============
+function buildNameList() {
+  var list = document.getElementById('name-list');
+  if (!list) return;
+  var groups = [];
+  var groupMap = {};
+  participants.forEach(function(p) {
+    if (!groupMap[p.aff]) {
+      groupMap[p.aff] = [];
+      groups.push({ aff: p.aff, members: groupMap[p.aff] });
+    }
+    groupMap[p.aff].push(p);
+  });
+  groups.forEach(function(g) {
+    var label = document.createElement('div');
+    label.className = 'name-group-label';
+    label.textContent = g.aff;
+    list.appendChild(label);
+    g.members.forEach(function(p) {
+      var btn = document.createElement('button');
+      btn.className = 'name-btn';
+      btn.innerHTML = '<span class="num">' + p.id + '</span>' + p.name;
+      btn.addEventListener('click', function() {
+        document.getElementById('input-id').value = p.id;
+        startBingo();
+      });
+      list.appendChild(btn);
+    });
+  });
+}
+buildNameList();
 // URL param
 var urlParams = new URLSearchParams(window.location.search);
 var paramId = urlParams.get('id');
